@@ -1,0 +1,22 @@
+#risks_per_mile
+CREATE TABLE risks_per_mile AS
+SELECT driverid, events as risky_events, totmiles as total_miles, 1000000*events/totmiles as risks_per_million_miles
+FROM riskfactor;
+#driver_risk
+CREATE TABLE driver_risk AS
+SELECT driverid, risks_per_million_miles, 1+(9*((risks_per_million_miles)-(min(risks_per_million_miles) over()))/((max(risks_per_million_miles) over())-(min(risks_per_million_miles) over()))) as scaled_risk
+FROM risks_per_mile;
+#truck_mpg
+CREATE TABLE truck_mpg AS
+SELECT truckid, sum(miles) as total_miles, sum(gas) as total_gas, sum(miles)/sum(gas) as overall_mpg
+FROM truck_mileage
+GROUP BY truckid;
+#fulldata
+CREATE TABLE fulldata AS
+SELECT geolocation.truckid, geolocation.driverid, model, event, latitude, longitude, city, state, velocity, event_ind, idling_ind, totmiles as total_miles, avgmpg as avg_mpg, overall_mpg, scaled_risk
+FROM geolocation
+JOIN trucks ON geolocation.truckid = trucks.truckid AND geolocation.driverid = trucks.driverid
+JOIN driver_mileage ON geolocation.driverid = driver_mileage.driverid
+JOIN average_mpg ON geolocation.truckid = average_mpg.truckid
+JOIN truck_mpg ON geolocation.truckid = truck_mpg.truckid
+JOIN driver_risk ON geolocation.driverid = driver_risk.driverid;
